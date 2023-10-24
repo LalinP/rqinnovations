@@ -1,0 +1,17 @@
+{
+  "groups": [
+    {
+      "name": "rq.emp",
+      "type": "com.example.rqchallenge.config.RemoteClientConfig",
+      "sourceType": "com.example.rqchallenge.config.RemoteClientConfig"
+    }
+  ],
+  "properties": [
+    {
+      "name": "rq.emp.base-url",
+      "type": "java.lang.String",
+      "sourceType": "com.example.rqchallenge.config.RemoteClientConfig"
+    }
+  ],
+  "hints": []
+}
