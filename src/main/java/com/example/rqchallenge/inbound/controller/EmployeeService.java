@@ -4,14 +4,13 @@ import java.util.List;
 import java.util.Map;
 
 import com.example.rqchallenge.config.RemoteClientConfig;
+import com.example.rqchallenge.exception.AuthException;
+import com.example.rqchallenge.exception.BadRequestException;
 import com.example.rqchallenge.exception.InformationNotFoundException;
+import com.example.rqchallenge.exception.NotFoundException;
+import com.example.rqchallenge.exception.ServerException;
 import com.example.rqchallenge.model.Employee;
 import com.example.rqchallenge.model.EmployeeResponse;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
@@ -32,14 +33,21 @@ public class EmployeeService {
 
   public static final String ERR_MSG_COULD_NOT_FETCH_THE_DATA = "Could not fetch the data ";
   public static final String URI_EMPLOYEES = "/employees";
-  private final RemoteClientConfig remoteClientConfig;
+  private final WebClient webClient;
 
   public ResponseEntity<List<Employee>> getEmployeeList() {
-    var webClient = remoteClientConfig.webClient();
     var response = webClient
         .get().uri(URI_EMPLOYEES)
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
+        .onStatus(HttpStatus::isError,
+        res -> switch (res.rawStatusCode()){
+          case 400 -> Mono.error(new BadRequestException("bad request : check payload"));
+          case 401, 403 -> Mono.error(new AuthException("Authentication Error "));
+          case 404 -> Mono.error(new NotFoundException("You sure you're looking for the right thing? "));
+          case 500 -> Mono.error(new ServerException("Server is messing up a bit"));
+          default -> Mono.error(new Exception("something went wrong"));
+        })
         .bodyToMono(EmployeeResponse.class)
         .block();
 
@@ -54,8 +62,17 @@ public class EmployeeService {
     return new ResponseEntity<>(employeeList, HttpStatus.OK);
   }
 
+  private void handleExceptions(int rawStatusCode) {
+    switch (rawStatusCode) {
+      case 400 -> Mono.error(new BadRequestException("bad request : check payload"));
+      case 401, 403 -> Mono.error(new AuthException("Authentication Error "));
+      case 404 -> Mono.error(new NotFoundException("You sure you're looking for the right thing? "));
+      case 500 -> Mono.error(new ServerException("Server is messing up a bit"));
+      default -> Mono.error(new Exception("something went wrong"));
+
+    }
+  }
   public ResponseEntity<Employee> getEmployeeById(String id) {
-    var webClient = remoteClientConfig.webClient();
     var response = webClient
         .get()
         .uri("/employee/{id}", id)
@@ -72,7 +89,6 @@ public class EmployeeService {
   }
 
   public ResponseEntity<Integer> getHighestSalaryOfEmployees() {
-    var webClient = remoteClientConfig.webClient();
     var response = webClient
         .get().uri(URI_EMPLOYEES)
         .accept(MediaType.APPLICATION_JSON)
@@ -92,7 +108,7 @@ public class EmployeeService {
   }
 
   public ResponseEntity<String> deleteEmployeeById(String id) {
-    var webClient = remoteClientConfig.webClient();
+
     var response = webClient
         .delete()
         .uri("/delete/{id}", id)
@@ -123,7 +139,7 @@ public class EmployeeService {
   }
 
   public ResponseEntity<List<String>> getTopTenHighestEarningEmployeeNames(){
-    var webClient = remoteClientConfig.webClient();
+
     var response = webClient
         .get().uri(URI_EMPLOYEES)
         .accept(MediaType.APPLICATION_JSON)
@@ -149,13 +165,13 @@ public class EmployeeService {
   }
 
   public ResponseEntity<String> createEmployee(Map<String, Object> employeeInput) {
+
     Employee body = Employee.builder()
         .employeeName(String.valueOf(employeeInput.get("name")))
         .employeeAge(String.valueOf(employeeInput.get("age")))
         .employeeSalary(String.valueOf(employeeInput.get("salary")))
         .build();
 
-    var webClient = remoteClientConfig.webClient();
     var response = webClient
         .post()
         .uri("/create")
@@ -169,5 +185,4 @@ public class EmployeeService {
     }
     return new ResponseEntity<>(response.getStatus(), HttpStatus.OK);
   }
-
 }

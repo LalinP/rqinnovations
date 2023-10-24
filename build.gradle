@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '11'
+sourceCompatibility = "14"
 
 repositories {
     repositories {
@@ -36,8 +36,11 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
     testImplementation 'org.projectlombok:lombok:1.18.30'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
+    testImplementation "com.squareup.okhttp3:okhttp:4.9.3"
+    testImplementation "com.squareup.okhttp3:mockwebserver:4.9.3"
 }
 
 test {
     useJUnitPlatform()
 }
+targetCompatibility = JavaVersion.VERSION_14
