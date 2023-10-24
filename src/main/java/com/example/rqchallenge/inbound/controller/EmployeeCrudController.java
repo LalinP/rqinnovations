@@ -6,6 +6,7 @@ import java.util.Map;
 import com.example.rqchallenge.employees.IEmployeeController;
 import com.example.rqchallenge.model.Employee;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -46,6 +47,7 @@ private final EmployeeService employeeService;
     return employeeService.createEmployee(employeeInput);
   }
 
+  @SneakyThrows
   public ResponseEntity<String> deleteEmployeeById(String id) {
     return employeeService.deleteEmployeeById(id);
   }

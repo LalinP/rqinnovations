@@ -3,7 +3,6 @@ package com.example.rqchallenge.inbound.controller;
 import java.util.List;
 import java.util.Map;
 
-import com.example.rqchallenge.config.RemoteClientConfig;
 import com.example.rqchallenge.exception.AuthException;
 import com.example.rqchallenge.exception.BadRequestException;
 import com.example.rqchallenge.exception.InformationNotFoundException;
@@ -41,22 +40,22 @@ public class EmployeeService {
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
         .onStatus(HttpStatus::isError,
-        res -> switch (res.rawStatusCode()){
-          case 400 -> Mono.error(new BadRequestException("bad request : check payload"));
-          case 401, 403 -> Mono.error(new AuthException("Authentication Error "));
-          case 404 -> Mono.error(new NotFoundException("You sure you're looking for the right thing? "));
-          case 500 -> Mono.error(new ServerException("Server is messing up a bit"));
-          default -> Mono.error(new Exception("something went wrong"));
-        })
+            res -> switch (res.rawStatusCode()) {
+              case 400 -> Mono.error(new BadRequestException("bad request : check payload"));
+              case 401, 403 -> Mono.error(new AuthException("Authentication Error "));
+              case 404 -> Mono.error(new NotFoundException("You sure you're looking for the right thing? "));
+              case 500 -> Mono.error(new ServerException("Server is messing up a bit"));
+              default -> Mono.error(new Exception("something went wrong"));
+            })
         .bodyToMono(EmployeeResponse.class)
         .block();
 
-    if(response == null){
+    if (response == null) {
       throw new InformationNotFoundException(ERR_MSG_COULD_NOT_FETCH_THE_DATA);
     }
 
     List<Employee> employeeList = List.of();
-    if(isNotEmpty(response)) {
+    if (isNotEmpty(response)) {
       employeeList = response.getData();
     }
     return new ResponseEntity<>(employeeList, HttpStatus.OK);
@@ -72,6 +71,7 @@ public class EmployeeService {
 
     }
   }
+
   public ResponseEntity<Employee> getEmployeeById(String id) {
     var response = webClient
         .get()
@@ -81,7 +81,7 @@ public class EmployeeService {
         .bodyToMono(EmployeeResponse.class)
         .block();
 
-    if(response == null){
+    if (response == null) {
       throw new InformationNotFoundException(ERR_MSG_COULD_NOT_FETCH_THE_DATA);
     }
 
@@ -96,13 +96,13 @@ public class EmployeeService {
         .bodyToMono(EmployeeResponse.class)
         .block();
 
-    if(response == null){
+    if (response == null) {
       throw new InformationNotFoundException(ERR_MSG_COULD_NOT_FETCH_THE_DATA);
     }
 
-        var  highestSalaryOptional = response.getData().stream()
+    var highestSalaryOptional = response.getData().stream()
         .map(employee -> Integer.parseInt(employee.getEmployeeSalary()))
-        .max(Integer::compare).orElseThrow(()-> new InformationNotFoundException("salary details are not available"));
+        .max(Integer::compare).orElseThrow(() -> new InformationNotFoundException("salary details are not available"));
 
     return new ResponseEntity(highestSalaryOptional, HttpStatus.OK);
   }
@@ -117,7 +117,7 @@ public class EmployeeService {
         .bodyToMono(String.class)
         .block();
 
-    if(response == null){
+    if (response == null) {
       throw new InformationNotFoundException(ERR_MSG_COULD_NOT_FETCH_THE_DATA);
     }
 
@@ -129,16 +129,7 @@ public class EmployeeService {
     return new ResponseEntity<>(jsonObject.toString(), HttpStatus.OK);
   }
 
-  private String formatResponse(String response) {
-    JsonObject jsonObject = new JsonObject();
-    if (isNotEmpty(response)) {
-      jsonObject = new JsonParser().parse(response.toString()).getAsJsonObject();
-      jsonObject.remove("data");
-    }
-    return jsonObject.toString();
-  }
-
-  public ResponseEntity<List<String>> getTopTenHighestEarningEmployeeNames(){
+  public ResponseEntity<List<String>> getTopTenHighestEarningEmployeeNames() {
 
     var response = webClient
         .get().uri(URI_EMPLOYEES)
@@ -147,20 +138,21 @@ public class EmployeeService {
         .bodyToMono(EmployeeResponse.class)
         .block();
 
-    if(response == null){
+    if (response == null) {
       throw new InformationNotFoundException(ERR_MSG_COULD_NOT_FETCH_THE_DATA);
     }
 
     List<String> employeeList = null;
     if (isNotEmpty(response) && response.getData() != null) {
-        employeeList = response
-            .getData()
-            .stream()
-            .sorted((emp1, emp2) -> Integer.compare(Integer.parseInt(emp2.employeeSalary), Integer.parseInt(emp1.employeeSalary)))
-            .limit(10)
-            .map(employee -> employee.employeeName)
-            .collect(toList());
-      }
+      employeeList = response
+          .getData()
+          .stream()
+          .sorted((emp1, emp2) -> Integer.compare(Integer.parseInt(emp2.employeeSalary),
+              Integer.parseInt(emp1.employeeSalary)))
+          .limit(10)
+          .map(employee -> employee.employeeName)
+          .collect(toList());
+    }
     return new ResponseEntity<>(employeeList, HttpStatus.OK);
   }
 
@@ -180,7 +172,7 @@ public class EmployeeService {
         .retrieve()
         .bodyToMono(EmployeeResponse.class)
         .block();
-    if(response == null){
+    if (response == null) {
       throw new InformationNotFoundException(ERR_MSG_COULD_NOT_FETCH_THE_DATA);
     }
     return new ResponseEntity<>(response.getStatus(), HttpStatus.OK);

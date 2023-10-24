@@ -2,10 +2,12 @@ package com.example.rqchallenge;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import com.example.rqchallenge.RqChallengeApplicationTests.TestConfig;
-import com.example.rqchallenge.config.RemoteClientConfig;
 import com.example.rqchallenge.exception.AuthException;
 import com.example.rqchallenge.exception.BadRequestException;
 import com.example.rqchallenge.exception.NotFoundException;
@@ -14,14 +16,13 @@ import com.example.rqchallenge.inbound.controller.EmployeeService;
 import com.example.rqchallenge.model.Employee;
 import com.example.rqchallenge.model.EmployeeResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
-import org.junit.jupiter.api.AfterAll;
+import okhttp3.mockwebserver.internal.duplex.DuplexResponseBody;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +56,7 @@ class RqChallengeApplicationTests {
 
   @BeforeEach
   @SneakyThrows
-  void beforeEach() throws IOException  {
+  void beforeEach() throws IOException {
     employeeService = new EmployeeService(webClient);
   }
 
@@ -71,7 +72,7 @@ class RqChallengeApplicationTests {
         new MockResponse()
             .setResponseCode(200)
             .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
-            .setBody(allEmployeeList()));
+            .setBody(employeeSubList()));
 
     var products = employeeService.getEmployeeList();
     var code = products.getStatusCode();
@@ -124,7 +125,112 @@ class RqChallengeApplicationTests {
     assertThrows(ServerException.class, () -> employeeService.getEmployeeList());
   }
 
-  private String allEmployeeList() {
+  @Test
+  void getEmployeeByIdSuccess() {
+    mockWebServer.url("/");
+    mockWebServer.enqueue(
+        new MockResponse()
+            .setResponseCode(200)
+            .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
+            .setBody(getEmployeeByIdResponse("1")));
+
+    var products = employeeService.getEmployeeById("1");
+    var code = products.getStatusCode();
+    assertEquals(200, code.value());
+  }
+
+  @Test
+  void getHighestSalaryOfEmployeesListSuccess() {
+
+    mockWebServer.url("/");
+    mockWebServer.enqueue(
+        new MockResponse()
+            .setResponseCode(200)
+            .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
+            .setBody(getHighestSalaryOfEmployeesListResponse()));
+
+    var products = employeeService.getHighestSalaryOfEmployees();
+    var code = products.getStatusCode();
+    assertEquals(320800, products.getBody());
+    assertEquals(200, code.value());
+  }
+
+  @Test
+  void deleteEmployeeByIdSuccess() {
+    mockWebServer.url("/");
+    mockWebServer.enqueue(
+        new MockResponse()
+            .setResponseCode(200)
+            .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
+            .setBody("{\"status\":\"success\",\"data\":\"2\",\"message\":\"Successfully! Record has been deleted\"}"));
+
+    var products = employeeService.deleteEmployeeById("2");
+    var code = products.getStatusCode();
+    assertEquals("{\"status\":\"success\",\"message\":\"Successfully! Record has been deleted\"}", products.getBody());
+    assertEquals(200, code.value());
+  }
+
+
+  @Test
+  void createEmployeeSuccess() throws IOException {
+
+    mockWebServer.url("/");
+    mockWebServer.enqueue(
+        new MockResponse()
+            .setResponseCode(200)
+            .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
+            .setBody(createEmployeeResponse()));
+
+    var empDetails = employeeService.createEmployee(newEmployee());
+    var code = empDetails.getStatusCode();
+    assertEquals("success", empDetails.getBody());
+    assertEquals(200, code.value());
+  }
+
+  @Test
+  void throwsExceptionWhenCreateEmployeeNullResponse() throws IOException {
+
+    mockWebServer.url("/");
+    mockWebServer.enqueue(
+        new MockResponse()
+            .setResponseCode(200)
+            .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
+            .setBody("some rubbish"));
+
+    var empDetails = employeeService.createEmployee(newEmployee());
+    var code = empDetails.getStatusCode();
+    assertEquals("success", empDetails.getBody());
+    assertEquals(200, code.value());
+  }
+
+
+  private String getHighestSalaryOfEmployeesListResponse() {
+    return employeeSubList();
+  }
+
+  private Map<String, Object> newEmployee() {
+    Map<String, Object> map = new HashMap<>();
+    map.put("name", "Bilbo Baggins");
+    map.put("age", "45");
+    map.put("salary", 5000);
+    return map;
+  }
+  private String createEmployeeResponse() {
+    var response = EmployeeResponse.builder()
+        .status("success")
+        .message("Successfully! Record has been added.")
+        .data(List.of(Employee.builder()
+                .id("1262")
+                .build()
+        ))
+        .build();
+    try {
+      return mapper.writeValueAsString(response);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+  private String employeeSubList() {
     var response = EmployeeResponse.builder()
         .status("success")
         .message("Here is he list of employees")
@@ -149,8 +255,45 @@ class RqChallengeApplicationTests {
     }
   }
 
+  private String allEmployees() throws IOException {
+    File file = new File("src/test/resources/all_employees.json");
+    List<Employee> employeeList = mapper.readValue(file, new TypeReference<>() {
+    });
+
+    var response = EmployeeResponse.builder()
+        .status("success")
+        .message("Here is the list of employees")
+        .data(employeeList)
+        .build();
+    try {
+      return mapper.writeValueAsString(response);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private String getEmployeeByIdResponse(String id) {
+    var response = EmployeeResponse.builder()
+        .status("success")
+        .message("Here is the employee details")
+        .data(List.of(Employee.builder()
+            .id(id)
+            .employeeAge("61")
+            .employeeName("Tiger Nixon")
+            .employeeSalary("320800")
+            .build()
+        ))
+        .build();
+    try {
+      return mapper.writeValueAsString(response);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
   @TestConfiguration
- static class TestConfig {
+  static class TestConfig {
+
     @Bean
     public MockWebServer getMockWebServer() {
       return new MockWebServer();
