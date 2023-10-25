@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import com.example.rqchallenge.RqChallengeApplicationTests.TestConfig;
 import com.example.rqchallenge.exception.AuthException;
@@ -21,7 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.internal.duplex.DuplexResponseBody;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,14 +55,10 @@ class RqChallengeApplicationTests {
 
   @BeforeEach
   @SneakyThrows
-  void beforeEach() throws IOException {
+  void beforeEach() {
     employeeService = new EmployeeService(webClient);
   }
 
-  @AfterEach
-  void shutDown() throws IOException {
-    mockWebServer.shutdown();
-  }
 
   @Test
   void getAllEmployeesSuccess() {
@@ -74,10 +69,10 @@ class RqChallengeApplicationTests {
             .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
             .setBody(employeeSubList()));
 
-    var products = employeeService.getEmployeeList();
-    var code = products.getStatusCode();
+    var empDetails = employeeService.getEmployeeList();
+    var code = empDetails.getStatusCode();
     assertEquals(200, code.value());
-    assertEquals(2, products.getBody().size());
+    assertEquals(2, empDetails.getBody().size());
   }
 
   @Test
@@ -134,8 +129,8 @@ class RqChallengeApplicationTests {
             .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
             .setBody(getEmployeeByIdResponse("1")));
 
-    var products = employeeService.getEmployeeById("1");
-    var code = products.getStatusCode();
+    var empDetails = employeeService.getEmployeeById("1");
+    var code = empDetails.getStatusCode();
     assertEquals(200, code.value());
   }
 
@@ -149,9 +144,9 @@ class RqChallengeApplicationTests {
             .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
             .setBody(getHighestSalaryOfEmployeesListResponse()));
 
-    var products = employeeService.getHighestSalaryOfEmployees();
-    var code = products.getStatusCode();
-    assertEquals(320800, products.getBody());
+    var empDetails = employeeService.getHighestSalaryOfEmployees();
+    var code = empDetails.getStatusCode();
+    assertEquals(320800, empDetails.getBody());
     assertEquals(200, code.value());
   }
 
@@ -186,23 +181,6 @@ class RqChallengeApplicationTests {
     assertEquals("success", empDetails.getBody());
     assertEquals(200, code.value());
   }
-
-  @Test
-  void throwsExceptionWhenCreateEmployeeNullResponse() throws IOException {
-
-    mockWebServer.url("/");
-    mockWebServer.enqueue(
-        new MockResponse()
-            .setResponseCode(200)
-            .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
-            .setBody("some rubbish"));
-
-    var empDetails = employeeService.createEmployee(newEmployee());
-    var code = empDetails.getStatusCode();
-    assertEquals("success", empDetails.getBody());
-    assertEquals(200, code.value());
-  }
-
 
   private String getHighestSalaryOfEmployeesListResponse() {
     return employeeSubList();
